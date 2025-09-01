@@ -14,7 +14,7 @@ def check_args(args):
 
 
 def check_file_extension(filename):
-    if (filename.split(".")[-1]) != "ini":
+    if (filename.split(".")[-1]) not in ["ini", "fio"]:
         print("Invalid file extension\n")
         sys.exit(1)
 

@@ -30,7 +30,8 @@ class Logger(ABC):
         set_no_value = None if no_value else "1"
 
         fio_file["global"] = {}
-        fio_file.set("global", "time_based", set_no_value)
+        if not self.settings.has_option("global", "time_based"):
+            fio_file.set("global", "time_based", set_no_value)
         fio_file.set("global", "group_reporting", set_no_value)
         fio_file.set("global", "direct", "1")
 
