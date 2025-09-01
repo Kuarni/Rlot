@@ -12,4 +12,5 @@ AVAILABLE_PARAMETR_NAMES = {
     "dev",
     "number_realization",
     "path_to_spdk_repo",
+    "time_based",
 }
