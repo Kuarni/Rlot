@@ -71,10 +71,6 @@ def check_user_config_setting(config):
         print("For spdk testing, the ioengine parameter must be equal to 'spdk_bdev'\n")
         sys.exit(2)
 
-    if mode == "global" and len(config[mode]["dev"].split(",")) != 1:
-        print("The count of bdev in a simple disk test should be equal to 1\n")
-        sys.exit(2)
-
     if (
         mode != "global"
         and config[mode]["number_realization"] in [0, 1]

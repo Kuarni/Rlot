@@ -1,4 +1,7 @@
+import itertools
 import os
+from collections import defaultdict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as st
@@ -10,12 +13,11 @@ from lib.utils import (
 
 
 class Painter:
-    def __init__(self, path_to_logs, settings, mode, dev_name):
+    def __init__(self, path_to_logs, settings, mode):
         self.path_to_logs = path_to_logs
         self.path_to_out = self.__create_output_dir()
         self.settings = settings
         self.mode_bdev = mode
-        self.dev_name = dev_name
 
     def __create_output_dir(self) -> str:
         root_path = get_root_path()
@@ -35,17 +37,21 @@ class Painter:
         logs_dict = {}
         all_logs = self.__get_all_logs_files()
 
-        for rw in [i.strip() for i in self.settings["global"]["rw"].split(",")]:
-            logs_dict[rw] = {}
+        for key in itertools.product(
+            [i.strip() for i in self.settings["global"]["dev"].split(",")],
+            [i.strip() for i in self.settings["global"]["rw"].split(",")],
+        ):
+            dev, rw = key
+            logs_dict[key] = {}
             for type_graph in ["iops", "lat", "bw", "slat", "clat"]:
-                logs_dict[rw][type_graph] = []
+                logs_dict[key][type_graph] = []
 
             for logs in all_logs:
                 for type_graph in ["iops", "lat", "bw", "slat", "clat"]:
                     if logs.startswith(
-                        f"{self.settings['global']['bs']}-{rw}-{self.mode_bdev}.results_{type_graph}"
+                        f"{self.settings['global']['bs']}-{dev}-{rw}-{self.mode_bdev}.results_{type_graph}"
                     ):
-                        logs_dict[rw][type_graph].append(logs)
+                        logs_dict[key][type_graph].append(logs)
         return logs_dict
 
     def __calculate_one_job(self, data_path) -> list[int]:
@@ -88,6 +94,7 @@ class Painter:
         confidence_interval: tuple,
         title: str,
         y_label: str,
+        dev,
         right_title=None,
         left_title=None,
         rw="",
@@ -118,50 +125,56 @@ class Painter:
         fig.set_size_inches(15, 8)
         fig.suptitle(title, fontsize=20)
         fig.savefig(
-            f"{self.path_to_out}/{rw}_{type_graph}_i{iodepth}_n{numjobs}_graph.png",
+            f"{self.path_to_out}/{dev}_{rw}_{type_graph}_i{iodepth}_n{numjobs}_graph.png",
             dpi=100,
+        )
+
+    def __draw_graph_(self, type_graph, dev, rw, logs_path_array):
+        avg_data_array = self.__calculate_sum_all_jobs(logs_path_array)
+
+        if type_graph == "bw":
+            avg_data_array = np.array([convert_to_MiB(t) for t in avg_data_array])
+
+        if type_graph in ["clat", "lat", "slat"]:
+            avg_data_array = np.array([convert_to_ms(t) for t in avg_data_array])
+
+        confidence_interval = st.t.interval(
+            0.95,
+            len(avg_data_array) - 1,
+            loc=np.mean(avg_data_array),
+            scale=st.sem(avg_data_array),
+        )
+
+        center_title = f"Graph for {dev}"
+        left_title = get_current_data_short()
+        right_title = f"| rw {rw} | iodepth {self.settings['global']['iodepth']} | numjobs {self.settings['global']['numjobs']}"
+
+        self.__draw_graph(
+            avg_data_array,
+            confidence_interval,
+            center_title,
+            type_graph,
+            dev,
+            right_title,
+            left_title,
+            rw,
+            type_graph,
         )
 
     def draw_graph(self):
         logs_dict = self.__get_data_logs_dict()
+        sum_graph = defaultdict(lambda: defaultdict(list))
 
-        for rw in logs_dict:
-            for type_graph in logs_dict[rw]:
-                logs_path_array = logs_dict[rw][type_graph]
+        for key in logs_dict:
+            for type_graph in logs_dict[key]:
+                dev, rw = key
+                logs_path_array = logs_dict[key][type_graph]
+                self.__draw_graph_(type_graph, dev, rw, logs_path_array)
+                sum_graph[rw][type_graph] += logs_path_array
 
-                avg_data_array = self.__calculate_sum_all_jobs(logs_path_array)
-
-                if type_graph == "bw":
-                    avg_data_array = np.array(
-                        [convert_to_MiB(t) for t in avg_data_array]
-                    )
-
-                if type_graph in ["clat", "lat", "slat"]:
-                    avg_data_array = np.array(
-                        [convert_to_ms(t) for t in avg_data_array]
-                    )
-
-                confidence_interval = st.t.interval(
-                    0.95,
-                    len(avg_data_array) - 1,
-                    loc=np.mean(avg_data_array),
-                    scale=st.sem(avg_data_array),
-                )
-
-                center_title = f"Graph for {self.dev_name}"
-                left_title = get_current_data_short()
-                right_title = f"| rw {rw} | iodepth {self.settings['global']['iodepth']} | numjobs {self.settings['global']['numjobs']}"
-
-                self.__draw_graph(
-                    avg_data_array,
-                    confidence_interval,
-                    center_title,
-                    type_graph,
-                    right_title,
-                    left_title,
-                    rw,
-                    type_graph,
-                )
+        for rw in sum_graph:
+            for type_graph, logs_path_array in sum_graph[rw].items():
+                self.__draw_graph_(type_graph, 'sum', rw, logs_path_array)
 
 
 def convert_to_MiB(x):

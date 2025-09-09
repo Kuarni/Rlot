@@ -1,3 +1,4 @@
+import itertools
 from abc import ABC, abstractmethod
 from configparser import ConfigParser
 import os
@@ -35,25 +36,29 @@ class Logger(ABC):
         fio_file.set("global", "group_reporting", set_no_value)
         fio_file.set("global", "direct", "1")
 
-        for key, value in self.settings.items("global"):
-            if key not in ["rw", "dev", "path_to_spdk_repo"]:
-                fio_file["global"][key] = value
+        for section in self.settings.sections():
+            for key, value in self.settings.items(section):
+                if key not in ["rw", "dev", "path_to_spdk_repo"]:
+                    fio_file[section][key] = value
 
-        for rw in [i.strip() for i in self.settings["global"]["rw"].split(",")]:
-            section_name = f"{rw}-{self.settings['global']['bs']}"
+        for dev, rw in itertools.product(
+            [i.strip() for i in self.settings["global"]["dev"].split(",")],
+            [i.strip() for i in self.settings["global"]["rw"].split(",")],
+        ):
+            section_name = f"{rw}-{dev}-{self.settings['global']['bs']}"
             fio_file[section_name] = {}
-            fio_file[section_name]["filename"] = file_name_param
+            fio_file[section_name]["filename"] = dev
             fio_file[section_name]["rw"] = rw
 
             mode = self._get_mode()
             fio_file[section_name]["write_bw_log"] = (
-                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{rw}-{mode}.results"
+                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{dev}-{rw}-{mode}.results"
             )
             fio_file[section_name]["write_iops_log"] = (
-                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{rw}-{mode}.results"
+                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{dev}-{rw}-{mode}.results"
             )
             fio_file[section_name]["write_lat_log"] = (
-                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{rw}-{mode}.results"
+                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{dev}-{rw}-{mode}.results"
             )
 
         return fio_file
