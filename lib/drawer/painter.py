@@ -5,6 +5,8 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as st
+
+from lib.arg_parser.utils import get_log_prefix
 from lib.utils import (
     get_root_path,
     get_current_data,
@@ -49,7 +51,13 @@ class Painter:
             for logs in all_logs:
                 for type_graph in ["iops", "lat", "bw", "slat", "clat"]:
                     if logs.startswith(
-                        f"{self.settings['global']['bs']}-{dev}-{rw}-{self.mode_bdev}.results_{type_graph}"
+                        get_log_prefix(
+                            self.settings["global"]["bs"],
+                            dev,
+                            rw,
+                            self.mode_bdev,
+                        )
+                        + f".results_{type_graph}"
                     ):
                         logs_dict[key][type_graph].append(logs)
         return logs_dict
@@ -125,7 +133,7 @@ class Painter:
         fig.set_size_inches(15, 8)
         fig.suptitle(title, fontsize=20)
         fig.savefig(
-            f"{self.path_to_out}/{dev}_{rw}_{type_graph}_i{iodepth}_n{numjobs}_graph.png",
+            f"{self.path_to_out}/{get_log_prefix(self.settings['global']['bs'], dev, rw, self.mode_bdev)}_i{iodepth}_n{numjobs}_{type_graph}_graph.png",
             dpi=100,
         )
 

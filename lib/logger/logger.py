@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from configparser import ConfigParser
 import os
 import sys
+
+from lib.arg_parser.utils import get_log_prefix
 from lib.utils import get_current_data, get_root_path, run_command
 
 
@@ -52,13 +54,13 @@ class Logger(ABC):
 
             mode = self._get_mode()
             fio_file[section_name]["write_bw_log"] = (
-                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{dev}-{rw}-{mode}.results"
+                f"{self._logs_dir_path}/{get_log_prefix(self.settings['global']['bs'], dev, rw, mode)}.results"
             )
             fio_file[section_name]["write_iops_log"] = (
-                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{dev}-{rw}-{mode}.results"
+                f"{self._logs_dir_path}/{get_log_prefix(self.settings['global']['bs'], dev, rw, mode)}.results"
             )
             fio_file[section_name]["write_lat_log"] = (
-                f"{self._logs_dir_path}/{self.settings['global']['bs']}-{dev}-{rw}-{mode}.results"
+                f"{self._logs_dir_path}/{get_log_prefix(self.settings['global']['bs'], dev, rw, mode)}.results"
             )
 
         return fio_file

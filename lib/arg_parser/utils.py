@@ -23,6 +23,8 @@ def check_ini_file(filename):
     utils.check_file_exist(filename)
     check_file_extension(filename)
 
+def get_log_prefix(bs, dev: str, rw, mode) -> str:
+    return f"{bs}-{dev.replace('/', '-')}-{rw}-{mode}"
 
 def check_user_config_setting(config):
     for section in config.sections():
